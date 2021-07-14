@@ -1,4 +1,4 @@
-import { reverse_order } from "./reverse_order";
+import { reverse_order } from "./little_endian";
 import { getHash } from "./get_hash";
 
 export const get_merkle_root_hash = (txids: string[]): string => {

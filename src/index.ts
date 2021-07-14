@@ -1,8 +1,15 @@
 import {get_merkle_root_hash} from './utils/get_merkle_hash';
+import fetch from 'node-fetch';
+
+//https://github.com/minseopark1/naivecoin.git
 
 /**
  * https://bch.btc.com/000000000000ba761a1ae472324718cae6330fb6b227e86981a0dbce038a056f?page=1&asc=1&order_by=tx_block_idx
+ * https://blockchain.info/rawblock/$block_hash => block data api
  */
+
+const origin = `https://blockchain.info/rawblock/`;
+const block_hash = '0000000000000bae09a7a393a8acded75aa67e46cb81f7acaa5ad94f9eacd103'
 
 const targetHash = "3ca80c8061e97c950d25265b25769f78a0d0899f23b5133a3869c512aa5561c0"
 
@@ -26,4 +33,10 @@ let txids = [
 ]
 
 const result = get_merkle_root_hash(txids)
-console.log(result, result === targetHash)
+console.log(result, result === targetHash);
+
+(async () => {
+    const request = await fetch(`${origin}${block_hash}`, {method: 'GET'});
+    const response = await request.json();
+    console.log(response['tx'])
+})();
