@@ -61,9 +61,34 @@ io.of('/api').on('connection', (socket:Socket) => {
         })
     })
 
-    socket.on('proof of work', () => {
-        const tx = new UTXO(10, 'aaaaa', 'bbbbb');
-        const block = new Block([tx] as Utxo[], blockchain.chain);
+    // socket.on('proof of work', () => {
+    //     const tx = new UTXO(10, 'aaaaa', 'bbbbb');
+    //     const block = new Block([tx] as Utxo[], blockchain.chain);
+    //     block.init();
+    //     let nonce:number = 0
+    //     console.time('get nonce')
+    //     while(true){
+    //         const result = block.pow(nonce, blockchain)
+    //         if(result) break;
+    //         else {
+    //             nonce++;
+    //         }
+    //     }
+    //     console.timeEnd('get nonce')
+    //     console.log(blockchain.chain)
+    //     socket.emit('mining success', {
+    //         success: true,
+    //         data: blockchain.chain
+    //     })
+    // })
+
+    socket.on('proof of work', (data:Utxo[]) => {
+        const txs:Utxo[] = [];
+        data.forEach(({amount, sender, recipient}) => {
+            const _tx = new UTXO(amount, sender, recipient)
+            txs.push(_tx as Utxo)   // 수정 필요
+        })
+        const block = new Block(txs as Utxo[], blockchain.chain);
         block.init();
         let nonce:number = 0
         console.time('get nonce')

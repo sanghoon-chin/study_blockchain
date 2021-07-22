@@ -60,7 +60,7 @@ export class Block {
     }
 
     pow(nonce: number, blockchain) {
-        // version + preHash + merkleRoot + time + bits + nonce 순서로!!
+        // version + preHash + merkleRoot + time + bits + nonce 순서로
         const headerItems = little_endian(String(this.ver)) + reverse_order(this.prev_block) + reverse_order(this.mrkl_root) + little_endian(String(this.time)) + reverse_order(String(this.bits)) + little_endian(String(nonce))
         const hash1 = getHash.binHash(headerItems);
         const hash2 = getHash.hexHash(hash1);
@@ -79,15 +79,6 @@ export class Block {
             return false;
         }
     }
-
-    // generateGenesisBlock(recipient: string, blockchain) {
-    //     if (blockchain.length === 0) {
-    //         const utxo = new UTXO(50, null, recipient);
-            
-    //     } else {
-    //         throw new Error('already have genesis block!');
-    //     }
-    // }
 }
 
 // let txids = [
