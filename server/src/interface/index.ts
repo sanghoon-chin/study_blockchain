@@ -19,6 +19,7 @@ export interface BlockType {
     bits?: number | string;
     nonce?: number | string;
     height?: number;
+    tx?: Utxo[]
 }
 
 export interface Utxo {

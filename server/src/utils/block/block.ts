@@ -20,9 +20,6 @@ export class Block {
         this.prev_block = blockchain[blockchain.length - 1]?.hash || ''
         this.bits = ''
         this.tx = txs
-
-        this.generateBits();       // 난이도 조절
-        this.generateMrklRoot();   // 전달받은 txid로 머클루트값 생성
     }
 
     private generateMrklRoot() {
@@ -33,11 +30,19 @@ export class Block {
     // 난이도 조절
     // https://medium.com/@dongha.sohn/bitcoin-6-%EB%82%9C%EC%9D%B4%EB%8F%84%EC%99%80-%EB%AA%A9%ED%91%AF%EA%B0%92-9e5c0c12a580
     private generateBits() {
-        const rand = Math.floor(Math.random() * 5) + 3;
-        const randHash = getHash.hash('random').slice(rand)
+        // const rand = Math.floor(Math.random() * 5) + 3;
+        const rand = Math.floor(Math.random()) + 5;
+        console.log(rand)
+        const randHash = getHash.hash('temp').slice(rand)
         const target = randHash.padStart(64, '0');
+        console.log(`target: ${target}`)
         this.bits = target
         return target
+    }
+
+    init(){
+        this.generateBits();       // 난이도 조절
+        this.generateMrklRoot();   // 전달받은 txid로 머클루트값 생성
     }
 
     miningBlock(nonce, blockchain) {
@@ -49,13 +54,12 @@ export class Block {
             prev_block: this.prev_block,
             time: this.time,
             ver: this.ver,
+            tx: this.tx
         }
         blockchain.appendBlock(block)
-        // 50 코인 제공
-        return 50
     }
 
-    generateBlockHash(nonce: number, blockchain) {
+    pow(nonce: number, blockchain) {
         // version + preHash + merkleRoot + time + bits + nonce 순서로!!
         const headerItems = little_endian(String(this.ver)) + reverse_order(this.prev_block) + reverse_order(this.mrkl_root) + little_endian(String(this.time)) + reverse_order(String(this.bits)) + little_endian(String(nonce))
         const hash1 = getHash.binHash(headerItems);
@@ -65,22 +69,25 @@ export class Block {
         // 난이도보다 작은 blockhash라면 성공
         if (this.bits > blockHash) {
             console.log('채굴 성공');
+            console.log(this.bits, blockHash)
             this.hash = blockHash;
             this.miningBlock(nonce, blockchain);
+            // 50 코인 제공
+            return 50
         } else {
-            console.log('채굴 실패');
+            // console.log('채굴 실패');
             return false;
         }
     }
 
-    generateGenesisBlock(recipient: string, blockchain) {
-        if (blockchain.length === 0) {
-            const utxo = new UTXO(50, null, recipient);
+    // generateGenesisBlock(recipient: string, blockchain) {
+    //     if (blockchain.length === 0) {
+    //         const utxo = new UTXO(50, null, recipient);
             
-        } else {
-            throw new Error('already have genesis block!');
-        }
-    }
+    //     } else {
+    //         throw new Error('already have genesis block!');
+    //     }
+    // }
 }
 
 // let txids = [

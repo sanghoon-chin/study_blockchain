@@ -61,23 +61,49 @@ io.of('/api').on('connection', (socket:Socket) => {
         })
     })
 
-    socket.on('mining block', () => {
+    socket.on('proof of work', () => {
         const tx = new UTXO(10, 'aaaaa', 'bbbbb');
         const block = new Block([tx] as Utxo[], blockchain.chain);
+        block.init();
         let nonce:number = 0
-        console.log(block.bits)
         console.time('get nonce')
         while(true){
-            const result = block.generateBlockHash(nonce, blockchain)
-            console.log(result)
+            const result = block.pow(nonce, blockchain)
             if(result) break;
             else {
                 nonce++;
             }
         }
         console.timeEnd('get nonce')
-        console.log(`nonce: ${nonce}`)
-        socket.emit('mining success', 'good')
+        console.log(blockchain.chain)
+        socket.emit('mining success', {
+            success: true,
+            data: blockchain.chain
+        })
+    })
+
+    socket.on('genesis block', () => {
+        const tx = new UTXO(50, null, db[socket.id]?.address as string);
+        const genesisBlock = new Block([tx] as Utxo[], blockchain.chain);
+        genesisBlock.init();
+        let nonce:number = 0
+        console.time('get nonce')
+        while(true){
+            const result = genesisBlock.pow(nonce, blockchain)
+            if(result) break;
+            else {
+                nonce++;
+            }
+        }
+        console.log(blockchain.chain)
+    })
+
+    socket.on('create transaction', (data:Utxo) => {
+        mempool.push(data)
+        io.of('/api').emit('update mempool', {
+            success: true,
+            data: mempool
+        })
     })
 })
 
