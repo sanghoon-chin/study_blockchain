@@ -23,9 +23,28 @@ createWalletBtn.addEventListener('click', (e) => {
 })
 
 miningBtn.addEventListener('click', (e) => {
-    (e.target as HTMLButtonElement).disabled = true;
-    (e.target as HTMLButtonElement).innerHTML = '채굴 중'
-    socket.emit('proof of work');
+    // test
+    // (e.target as HTMLButtonElement).disabled = true;
+    // (e.target as HTMLButtonElement).innerHTML = '채굴 중'
+    // socket.emit('proof of work');
+
+
+    let txs:Utxo[] = []
+    const divs = document.querySelectorAll<HTMLDivElement>('div.active');
+    [...divs].forEach(el => {
+        const tx = {}
+        const spans = el.querySelectorAll<HTMLSpanElement>('span');
+        console.log(spans)
+        const keys = ['sender', 'amount', 'recipient'];
+        for(let i = 0;i<spans.length;i++){
+            const s = spans[i];
+            tx[keys[i]] = s.innerHTML;
+        }
+        txs.push(tx as Utxo)
+    })
+    console.log(txs)
+
+    socket.emit('proof of work', txs)
 })
 
 const updateAddressList = (data:Address[], container:HTMLElement, el:string) => {
@@ -47,16 +66,21 @@ const updateAddressList = (data:Address[], container:HTMLElement, el:string) => 
 }
 
 const updateMempool = (mempool:Utxo[]) => {
+    mempoolEl.innerHTML = '';
     mempool.forEach(({sender, recipient, amount}) => {
         const div = document.createElement('div')
+        
         div.style.border= `2px solid black`;
         div.style.padding = '20px';
+        div.addEventListener('click', (e) => {
+            (e.currentTarget as HTMLDivElement).classList.toggle('active');
+        })  
         const senderDiv = document.createElement('div')
-        senderDiv.innerHTML = `보내는 사람: ${sender}`;
+        senderDiv.innerHTML = `보내는 사람: <span>${sender}</span>`;
         const amountEl = document.createElement('div')
-        amountEl.innerHTML = amount + '원';
+        amountEl.innerHTML = `<span>${amount}</span>원`;
         const recipientEl = document.createElement('div');
-        recipientEl.innerHTML = `받는 사람 ${recipient}`;
+        recipientEl.innerHTML = `받는 사람 <span>${recipient}</span>`;
         div.appendChild(senderDiv)
         div.appendChild(amountEl)
         div.appendChild(recipientEl)
