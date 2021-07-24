@@ -27,7 +27,7 @@ export class Block {
         this.mrkl_root = get_merkle_root_hash(txids);
     }
 
-    // 난이도 조절
+    // 난이도 조절 공식대로 수정하기
     // https://medium.com/@dongha.sohn/bitcoin-6-%EB%82%9C%EC%9D%B4%EB%8F%84%EC%99%80-%EB%AA%A9%ED%91%AF%EA%B0%92-9e5c0c12a580
     private generateBits() {
         // const rand = Math.floor(Math.random() * 5) + 3;
@@ -102,3 +102,23 @@ export class Block {
 
 // const block = new Block(txids)
 // console.log(block.bits)
+
+const equation = (bits:number) => {
+    const hexBits = bits.toString(16);
+    // const MAXIMUM_TARGET = 0x0000 0000 FFFF 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000;
+    const MAXIMUM_TARGET = (2 ** 16 - 1) * (2 ** 13);
+    const first = '0x' + hexBits.slice(2);
+    const second = hexBits.slice(0, 2);
+
+    const coefficient = +Number(first).toString();
+    const exponent = +Number(second).toString();
+
+    const target = coefficient * (2 ** (8 * (exponent - 3))); // decimal
+
+    console.log(target)
+    console.log(Number(target).toString(16))    // hex
+    // const difficulty = maximum_target / current_target
+    // return 
+}
+
+equation(419668748)
