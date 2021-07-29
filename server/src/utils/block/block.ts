@@ -1,7 +1,6 @@
 import { BlockType, Utxo } from '../../interface';
 import { little_endian, reverse_order, getHash } from '../index';
 import { get_merkle_root_hash } from './merkle_root';
-import { UTXO } from '../utxo/utxo';
 
 export class Block {
     hash: string;
