@@ -18,7 +18,7 @@ export class Block {
         this.ver = 1;
         this.mrkl_root = ''
         this.prev_block = blockchain[blockchain.length - 1]?.hash || ''
-        this.bits = ''
+        this.bits = this.generateBits().currentTargetHex
         this.tx = txs
     }
 
@@ -27,20 +27,41 @@ export class Block {
         this.mrkl_root = get_merkle_root_hash(txids);
     }
 
-    // 난이도 조절 공식대로 수정하기
     // https://medium.com/@dongha.sohn/bitcoin-6-%EB%82%9C%EC%9D%B4%EB%8F%84%EC%99%80-%EB%AA%A9%ED%91%AF%EA%B0%92-9e5c0c12a580
     private generateBits() {
-        // const rand = Math.floor(Math.random() * 5) + 3;
-        const rand = Math.floor(Math.random()) + 5;
-        console.log(rand)
-        const randHash = getHash.hash('temp').slice(rand)
-        const target = randHash.padStart(64, '0');
-        console.log(`target: ${target}`)
-        this.bits = target
-        return target
+        // 0x1e0001(1_966_081) ~ 0x1effff(2_031_615) => 앞에 0의 개수가 6~9개 사이로 나옴. 적당한 듯
+        const getRandBits = (min, max) => {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        };
+
+        const bits = getRandBits(0x1e0001, 0x1effff);
+
+        const hexBits = bits.toString(16);
+        // const MAXIMUM_TARGET = 0x0000 0000 FFFF 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000; 고정된 상수값
+        const MAXIMUM_TARGET = 2 ** 224;
+        const _coefficient = '0x' + hexBits.slice(2);
+        const _exponent = '0x' + hexBits.slice(0, 2);
+
+        const coefficient = +Number(_coefficient).toString();
+        const exponent = +Number(_exponent).toString();
+
+        const target = coefficient * (2 ** (8 * (exponent - 3))); // decimal
+        const target_hex = target.toString(16).padStart(64, '0');
+        const difficulty = MAXIMUM_TARGET / target;
+
+        console.log(`difficulty: ${difficulty}, current target: ${target_hex}`);
+
+        return target;
+        // return {
+        //     currentTarget: target,
+        //     currentTargetHex: '0x' + target_hex,
+        //     difficulty
+        // }
     }
 
-    init(){
+    init() {
         this.generateBits();       // 난이도 조절
         this.generateMrklRoot();   // 전달받은 txid로 머클루트값 생성
     }
@@ -103,22 +124,34 @@ export class Block {
 // const block = new Block(txids)
 // console.log(block.bits)
 
-const equation = (bits:number) => {
-    const hexBits = bits.toString(16);
-    // const MAXIMUM_TARGET = 0x0000 0000 FFFF 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000;
-    const MAXIMUM_TARGET = (2 ** 16 - 1) * (2 ** 13);
-    const first = '0x' + hexBits.slice(2);
-    const second = hexBits.slice(0, 2);
 
-    const coefficient = +Number(first).toString();
-    const exponent = +Number(second).toString();
+// // 0 개수별로 몇 분이나 걸리는지 테스트 해보기 => 4개부터 9개까지 테스트해보긴
+// const equation = () => {
+//     // 0x1e0001(1_966_081) ~ 0x1effff(2_031_615) => 앞에 0의 개수가 6~9개 사이로 나옴. 적당한 듯
+//     const getRandBits = (min, max) => {
+//         min = Math.ceil(min);
+//         max = Math.floor(max);
+//         return Math.floor(Math.random() * (max - min + 1)) + min;
+//     };
 
-    const target = coefficient * (2 ** (8 * (exponent - 3))); // decimal
+//     const bits = getRandBits(0x1e0001, 0x1effff);
 
-    console.log(target)
-    console.log(Number(target).toString(16))    // hex
-    // const difficulty = maximum_target / current_target
-    // return 
-}
+//     const hexBits = bits.toString(16);
+//     // const MAXIMUM_TARGET = 0x0000 0000 FFFF 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000; 고정된 상수값
+//     const MAXIMUM_TARGET = 2 ** 224;
+//     const _coefficient = '0x' + hexBits.slice(2);
+//     const _exponent = '0x' + hexBits.slice(0, 2);
 
-equation(419668748)
+//     const coefficient = +Number(_coefficient).toString();
+//     const exponent = +Number(_exponent).toString();
+
+//     const target = coefficient * (2 ** (8 * (exponent - 3))); // decimal
+//     const target_hex = target.toString(16).padStart(64, '0');
+//     const difficulty = MAXIMUM_TARGET / target;
+
+//     return {
+//         currentTarget: target,
+//         currentTargetHex: '0x' + target_hex,
+//         difficulty
+//     }
+// }
