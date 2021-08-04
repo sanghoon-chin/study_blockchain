@@ -1,7 +1,7 @@
 import { ec as EC } from 'elliptic'
 
-import { generatePrivKey, encodingPrivKey, getPublicKey } from './helper';
-import { getHash, bs58 } from '../../index';
+import { generatePrivKey } from './helper';
+import { getHash, bs58_encode } from '../helper';
 
 //http://royalforkblog.github.io/2014/08/11/graphical-address-generator/
 // export const createCoinAddress = (data?: string) => {
@@ -45,9 +45,9 @@ export const generateKeyPair = (data?: string) => {
         priv: Buffer.from(str, 'hex'),
         privEnc: 'hex'
     })
-    // console.log(keyPair.getPrivate('hex'))
-    // console.log(keyPair.getPublic(true, 'hex'))
-    return keyPair
+    console.log(keyPair.getPrivate('hex'))
+    console.log(keyPair.getPublic(true, 'hex'))
+    return keyPair  // 이걸로 개인키, 공개키, 주소까지 구할 수 있을
 }
 
 export const getAddress = (pubKey:string) => {
@@ -57,9 +57,17 @@ export const getAddress = (pubKey:string) => {
     const temp = prefixVer + doubleHashPubKey;
     const checksum = getHash.hexHash(getHash.binHash(temp)).slice(0, 8);
     const result = temp + checksum;
-    const address = bs58(result);
-    // console.log(address)
+    const address = bs58_encode(result);
+    console.log(address)
     return address;
 }
 
-// getAddress(generateKeyPair().getPublic(true, 'hex'))
+// http://royalforkblog.github.io/2014/08/11/graphical-address-generator/#brettonwoods_7_1_1944
+// http://royalforkblog.github.io/2014/11/20/txn-demo/
+// const keyPair = getAddress(generateKeyPair('brettonwoods_7_1_1944').getPublic(true, 'hex'))
+// console.log(keyPair)
+
+
+
+
+

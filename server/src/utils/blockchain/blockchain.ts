@@ -1,18 +1,16 @@
-import { BlockType } from "../../interface";
+export class Blockchain{
+    blockchain;
+    mempool;
 
-export class BlockChain {
-    chain: BlockType[] = [];
-
-    appendBlock(block){
-        block.height = this.chain.length;
-        this.chain.push(block)
+    constructor(){
+        
     }
 
-    get exportBlockChain(){
-        return this.chain
+    genesisBlock(block){
+        this.mempool.push(block);
     }
 
-    checkBalance(user:string){
-        // 송신자 또는 수신자의 잔액확인하는 로직
+    __str__(){
+        return this.blockchain;
     }
 }

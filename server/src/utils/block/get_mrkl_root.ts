@@ -1,4 +1,4 @@
-import {reverse_order, getHash} from '../index';
+import {reverse_order, getHash} from '../helper';
 
 export const get_merkle_root_hash = (txids: string[]): string => {
     let temp1 = txids;

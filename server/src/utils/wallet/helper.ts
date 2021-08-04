@@ -1,18 +1,17 @@
 //1. 실제 물리적인 행위를 기반으로 난수 생성 (TRNG)
 //2. 시드값을 이용해 시계열로 난수 생성 (PRNG)
 //3. 하드웨어 장치에서 발생하는 노이즈를 바탕으로 랜덤 숫자 생성 (CSPRNG)
-
 import { randomBytes } from 'crypto';
 import secp256k1 from 'secp256k1';
 import bs58 from 'bs58';
-import {getHash, reverse_order, little_endian} from '..'
+import {getHash} from '../helper';
 
 import * as ecdsa from 'elliptic';
 const ec = new ecdsa.ec('secp256k1');
 
 // generate private key (random). sha-256으로 랜덤 생성한 바이트 시퀀스니깐 32바이트!
 export const generatePrivKey = (): Buffer => {
-    let privKey;
+    let privKey:Buffer;
     do {
         privKey = randomBytes(32)
     } while (!secp256k1.privateKeyVerify(privKey))
