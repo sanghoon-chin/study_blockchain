@@ -1,6 +1,7 @@
 import {get_merkle_root_hash} from './get_mrkl_root';
 import {little_endian, reverse_order, getHash} from '../helper';
-import type {IBlock} from '../../interface';
+import type {IBlock, ITransaction} from '../../interface';
+import {CoinbaseTransaction} from '../transaction'
 
 export class Block implements IBlock{
     hash;
@@ -9,14 +10,22 @@ export class Block implements IBlock{
     mrkl_root;
     time;
     bits;
+    height;
+    tranactions:ITransaction[];
 
-    constructor(prev_block:string) {
+    constructor(txs:ITransaction[], prev_block?:string) {
         this.time = Math.floor(Date.now() * 0.001);
         this.ver = 1;
         this.hash = '';
         this.mrkl_root = ''
         this.prev_block = prev_block || ''
-        this.bits = this.generateBits()
+        this.bits = this.generateBits();
+        this.tranactions = txs
+    }
+
+    // 첫번째 트랜잭션은 miner한테 보상으로 제공되는 coinbase여야함.
+    addCoinbaseTx(){
+
     }
 
     // https://medium.com/@dongha.sohn/bitcoin-6-%EB%82%9C%EC%9D%B4%EB%8F%84%EC%99%80-%EB%AA%A9%ED%91%AF%EA%B0%92-9e5c0c12a580
@@ -30,7 +39,7 @@ export class Block implements IBlock{
 
         const bits = getRandBits(0x1e0001, 0x1effff);
 
-        // bigint로 바꾸기 => 근데 몫만 나옴
+        // bigint로 바꾸기 => 근데 몫만 나오니깐 잘 해보기
         const hexBits = bits.toString(16);
         // const MAXIMUM_TARGET = 0x0000 0000 FFFF 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000; 고정된 상수값
         const MAXIMUM_TARGET = 2 ** 224;
@@ -54,8 +63,8 @@ export class Block implements IBlock{
         // }
     }
 
-    generateMrklRoot(pendingTxs) {
-        const txids = pendingTxs.map(v => v.txid as string)
+    generateMrklRoot() {
+        const txids = this.tranactions.map(v => v.txID as string)
         this.mrkl_root = get_merkle_root_hash(txids);
     }
 

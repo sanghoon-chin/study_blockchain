@@ -2,7 +2,7 @@ export interface ITxInput {
     txid: string | null;
     vout: string;   // 출력 인덱스
     scriptSig: string;
-    sequence: string;
+    sequence: number;
 }
 
 export interface ITxOutput {
@@ -15,6 +15,7 @@ export interface ITransaction {
     locktime?: number;
     vin: ITxInput[];
     vout: ITxOutput[];
+    txID: string;
 }
 
 export interface IBlock {
@@ -24,6 +25,8 @@ export interface IBlock {
     mrkl_root: string;
     time: number;
     bits: number;
+    height: number;
+    tranactions: ITransaction[]
 }
 
 export interface IBlockchain {

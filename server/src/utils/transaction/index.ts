@@ -1,5 +1,8 @@
-import {Transaction} from './transaction';
+import {Transaction, TxInput, CoinbaseTransaction, TxOutput} from './transaction';
 
 export {
-    Transaction
+    Transaction,
+    TxInput,
+    CoinbaseTransaction,
+    TxOutput
 }
