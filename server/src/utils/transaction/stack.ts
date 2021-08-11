@@ -1,8 +1,6 @@
 import {OP_CODES} from './script';
 import {getHash} from '../helper'
-import { BNInput, ec as EC } from 'elliptic';
-import { TxInput } from './transaction';
-import { ITxInput } from '../../interface';
+import { ec as EC } from 'elliptic';
 const ec = new EC('secp256k1');
 
 // type StackArr<T> = {
@@ -19,14 +17,12 @@ export class Stack {
         this.txInput = txInput
     }
 
-    // 들어온 값이 연산자 or hex string 인지에 따라 다르게 동작
     push(value:string, type:'OP'|'VALUE'){
         if(type === 'VALUE'){
-            this.arr.push(value);
+            return this.arr.push(value);
         } else{
-            this.executeOP(value)
+            return this.executeOP(value)
         }
-        return value;
     }
 
     pop(){
@@ -34,6 +30,7 @@ export class Stack {
     }
 
     executeOP(operator:string){
+        let isValid = true;
         switch(operator){
             case OP_CODES['OP_DUP']:
                 console.log('duplicate!')
@@ -52,15 +49,29 @@ export class Stack {
                     this.pop();
                 } else {
                     console.log('검증 실패')
-                    return false;
+                    isValid = false;
                 }
+                console.log('op_equalverify')
                 break;
             case OP_CODES['OP_CHECKSIG']:
                 console.log('checksig');
                 // 메세지 + 서명 + 공개키
+                // 라이브러리 사용하면 아래처럼 간단하게 가능
+                const bool = this.txInput.keyPair.verify(this.txInput.msgHash, this.txInput.generateSignature())
+                console.log(`bool: `, bool)
+                this.pop();
+                this.pop();
+                if(bool){
+                    console.log('검증 성공');
+                    this.push('TRUE', 'VALUE');
+                } else{
+                    console.log('검증 실패');
+                    this.push('FALSE', 'VALUE')
+                    isValid = false;
+                }
                 break;
         }
-        return this.top
+        return isValid;
     }
 
     get top(){

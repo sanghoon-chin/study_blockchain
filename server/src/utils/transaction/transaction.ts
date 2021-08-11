@@ -36,7 +36,8 @@ export class TxInput implements ITxInput {
         // return msg
         const msg: number[] = [];
         msg.push(1, 2, 3, 4, 5)
-        this.msgHash = msg
+        // this.msgHash = msg
+        this.msgHash = '8190374a5a1feb54fab4417fac1a3d9185de06fd8dcac34822c7cd00083638b1'
         return '8190374a5a1feb54fab4417fac1a3d9185de06fd8dcac34822c7cd00083638b1'   // test
     }
 
@@ -53,7 +54,10 @@ export class TxInput implements ITxInput {
     // 서명직렬화를 return하는 함수 (9가지 요소로 구성됨)
     // 아래 식이 결국 DER 형식임.
     // DER 시퀀스의 시작 + 시퀀스의 길이 + 정수 값이 뒤따릅니다. + 정수의 길이 + R + 다음에 또 다른 정수가 옵니다. +  정수의 길이 + S + SIGHASH
-    generateSignature():string{
+    generateSignature(type?:string):string{
+        if(type){
+            return this.keyPair.sign(this.generateMsgHash()).toDER()
+        }
         return this.keyPair.sign(this.generateMsgHash()).toDER('hex')
     }
 
@@ -77,13 +81,11 @@ export class TxOutput implements ITxOutput {
     recipientAddress: string;
     value: number;
     scriptPubKey: string;
-    status: 'spent'|'unspent';
 
     constructor(recipientAddress: string, value: number) { // bs58 encoding format
         this.recipientAddress = recipientAddress;
         this.value = this.btc2satoshi(value);
         this.scriptPubKey = this.createOutput();
-        this.status = 'unspent';
     }
 
     // 1BTC = 10^8 satoshi
@@ -203,7 +205,7 @@ type ParsedScriptPubKey = {
     code: string;
 }
 
-const executeScript = (txInput, pubK, txOutput):boolean => {
+const executeScript = (txInput, txOutput) => {
 
     const parseScriptPubKey = (_scriptPubKey:string):ParsedScriptPubKey[] => {
         const op1 = _scriptPubKey.slice(0, 2);
@@ -221,35 +223,35 @@ const executeScript = (txInput, pubK, txOutput):boolean => {
         ]
     }
 
-    const sig = txInput.__str__.scriptSig
+    const sig = txInput.__str__.scriptSig;
     const scriptPubKey = txOutput.__str__.scriptPubKey;
 
     const stack = new Stack(txInput);
     const arr = parseScriptPubKey(scriptPubKey);
     stack.push(sig, 'VALUE');
-    stack.push(pubK, 'VALUE');
+    stack.push(txInput.keyPair.getPublic(true, 'hex'), 'VALUE');
     for (const obj of arr){
         const {code, type} = obj;
-        stack.push(code, type)
+        const res = stack.push(code, type)
+        if(!res){
+            console.log('당신이 쓸 수 있는 utxo가 아닙니다.')
+            return false;
+        }
+        // console.log(stack.__str__)
     }
-    console.log(stack.__str__)
     // console.log('파싱된 scriptPubKey 배열')
     // console.log(arr)
 
-    // 스크립트 연산이 끝나고 stack에 남아있는 최종 값이 TRUE이면 return true
-    // 거기 있는 value와 txid 등의 정보도 필요할 듯??
-    if(stack.top){
+    if(stack.top === 'TRUE'){
+        console.log('당신이 쓸 수 있는 UTXO 입니다.');
         return true;
-    } else{
+    } else {
         return false;
     }
 }
 
 
 // test
-const sender = generateKeyPair('brettonwoods_7_1_1944');
-const recipient = generateKeyPair('temp2');
-const recipientAddress = getAddress(recipient.getPublic(true, 'hex'));
 
 // const blockchain = new Blockchain();
 // console.log(blockchain)
@@ -261,13 +263,15 @@ const recipientAddress = getAddress(recipient.getPublic(true, 'hex'));
  * 1. 일단 내가 돈을 보내야되니깐 내 지갑에 잔고가 있는지 확인
  * 2. utxo 찾기 (status가 unspent인것만)
  */
+const sender = generateKeyPair('brettonwoods_7_1_1944');
+const senderAddress = getAddress(sender.getPublic(true, 'hex'))
+const recipient = generateKeyPair('temp2');
+const recipientAddress = getAddress(recipient.getPublic(true, 'hex'));
 
 const txInput = new TxInput(sender)
 const sig = txInput.generateScriptSig()
-console.log(`sig 출력`)
-console.log(sig)
+// console.log(sig)
 
-const txOutput = new TxOutput(recipientAddress, 0.1);
+const txOutput = new TxOutput(senderAddress, 0.1);
 
-// executeScript(txInput.__str__.scriptSig, recipient.getPublic(true, 'hex'), txOutput.__str__.scriptPubKey)
-executeScript(txInput, recipient.getPublic(true, 'hex'), txOutput)
+executeScript(txInput, txOutput)
