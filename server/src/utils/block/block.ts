@@ -25,7 +25,7 @@ export class Block implements IBlock{
 
     // 첫번째 트랜잭션은 miner한테 보상으로 제공되는 coinbase여야함.
     addCoinbaseTx(){
-
+        // 마이너가 코인베이스를 미리 생성해두고 나서 머클루트 구하고 -> 작업증명 후 -> 다른 노드들이 검증
     }
 
     // https://medium.com/@dongha.sohn/bitcoin-6-%EB%82%9C%EC%9D%B4%EB%8F%84%EC%99%80-%EB%AA%A9%ED%91%AF%EA%B0%92-9e5c0c12a580

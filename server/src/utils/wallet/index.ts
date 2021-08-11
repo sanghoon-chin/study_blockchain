@@ -66,8 +66,3 @@ export const getAddress = (pubKey:string) => {
 // http://royalforkblog.github.io/2014/11/20/txn-demo/
 // const keyPair = getAddress(generateKeyPair('brettonwoods_7_1_1944').getPublic(true, 'hex'))
 // console.log(keyPair)
-
-
-
-
-
