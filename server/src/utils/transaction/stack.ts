@@ -47,7 +47,7 @@ export class Stack {
                     this.pop();
                     this.pop();
                 } else {
-                    console.log('검증 실패')
+                    console.log('equalverify 검증 실패')
                     isValid = false;
                 }
                 break;

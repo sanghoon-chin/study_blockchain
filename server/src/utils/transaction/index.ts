@@ -1,8 +1,13 @@
 import {Transaction, TxInput, CoinbaseTransaction, TxOutput} from './transaction';
+import {Stack} from './stack';
+import {executeScript, OP_CODES} from './script';
 
 export {
     Transaction,
     TxInput,
     CoinbaseTransaction,
-    TxOutput
+    TxOutput,
+    Stack,
+    executeScript,
+    OP_CODES
 }

@@ -45,8 +45,8 @@ export const generateKeyPair = (data?: string) => {
         priv: Buffer.from(str, 'hex'),
         privEnc: 'hex'
     })
-    console.log('private key: ' + keyPair.getPrivate('hex'))
-    console.log('public key: ' + keyPair.getPublic(true, 'hex'))
+    // console.log('private key: ' + keyPair.getPrivate('hex'))
+    // console.log('public key: ' + keyPair.getPublic(true, 'hex'))
     return keyPair  // 이걸로 개인키, 공개키, 주소까지 구할 수 있을
 }
 
@@ -58,7 +58,7 @@ export const getAddress = (pubKey:string) => {
     const checksum = getHash.hexHash(getHash.binHash(temp)).slice(0, 8);
     const result = temp + checksum;
     const address = bs58_encode(result);
-    console.log(`address: ${address}`);
+    // console.log(`address: ${address}`);
     return address;
 }
 

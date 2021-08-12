@@ -17,15 +17,10 @@ export class Block implements IBlock{
         this.time = Math.floor(Date.now() * 0.001);
         this.ver = 1;
         this.hash = '';
-        this.mrkl_root = ''
+        this.tranactions = txs
+        this.mrkl_root = this.generateMrklRoot();
         this.prev_block = prev_block || ''
         this.bits = this.generateBits();
-        this.tranactions = txs
-    }
-
-    // 첫번째 트랜잭션은 miner한테 보상으로 제공되는 coinbase여야함.
-    addCoinbaseTx(){
-        // 마이너가 코인베이스를 미리 생성해두고 나서 머클루트 구하고 -> 작업증명 후 -> 다른 노드들이 검증
     }
 
     // https://medium.com/@dongha.sohn/bitcoin-6-%EB%82%9C%EC%9D%B4%EB%8F%84%EC%99%80-%EB%AA%A9%ED%91%AF%EA%B0%92-9e5c0c12a580
@@ -54,8 +49,9 @@ export class Block implements IBlock{
         const difficulty = MAXIMUM_TARGET / target;
 
         console.log(`difficulty: ${difficulty}, current target: ${target_hex}`);
-
-        return target;
+        // test 용. 시간이 너무 오래 걸려서...
+        return `0001115490000000000000000000000000000000000000000000000000000000`
+        // return target;
         // return {
         //     currentTarget: target,
         //     currentTargetHex: '0x' + target_hex,
@@ -64,8 +60,9 @@ export class Block implements IBlock{
     }
 
     generateMrklRoot() {
+        console.log(this.tranactions)
         const txids = this.tranactions.map(v => v.txID as string)
-        this.mrkl_root = get_merkle_root_hash(txids);
+        return get_merkle_root_hash(txids);
     }
 
     generateBlockHash(nonce:number){
@@ -77,17 +74,23 @@ export class Block implements IBlock{
 
     pow(target:string){
         let nonce = 0;
-        console.time('채굴 중');
+        console.time('채굴에 걸린시간');
         while(true){
             const blockHash = this.generateBlockHash(nonce);
             if(blockHash < target){
+                this.hash = blockHash;
                 break;
             } else{
                 nonce++;
             }
         }
-        console.timeEnd('채굴 중');
-        console.log('채굴 성공');
+        console.timeEnd('채굴에 걸린시간');
         return true;
+    }
+
+    get __str__(){
+        return {
+            
+        }
     }
 }

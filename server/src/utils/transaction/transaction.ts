@@ -1,13 +1,10 @@
 import { ec as EC } from 'elliptic';
 const ec = new EC('secp256k1');
 
-import { generateKeyPair, getAddress } from '../wallet/index';
 import { OP_CODES } from './script'
 import { bs58_decode, little_endian, getHash, reverse_order } from '../helper';
 import type { ITxInput, ITransaction, ITxOutput } from '../../interface';
-import { Blockchain } from '../blockchain';
 
-// http://royalforkblog.github.io/2014/11/20/txn-demo/
 export class TxInput implements ITxInput {
     txid    // 참조한 출력의 txid
     scriptSig
@@ -15,37 +12,34 @@ export class TxInput implements ITxInput {
     sequence = 0xFFFFFFFF;
 
     keyPair: EC.KeyPair
-    msgHash
+    msgHash: string
+    prevUTXO:ITransaction
 
-    constructor(senderKeyPair: EC.KeyPair) {
+    constructor(senderKeyPair: EC.KeyPair, prevTx:ITransaction) {
         this.keyPair = senderKeyPair;
-        this.vout = this.updateVout();
+        this.prevUTXO = prevTx;
+        this.msgHash = prevTx.txID
         this.scriptSig = this.generateScriptSig();
+        // this.vout = this.updateVout();
     }
 
-    updateVout() {
-        return '0'    // 수정 필요
-    }
+    // updateVout() {
+    //     return '0'
+    // }
 
     generateMsgHash(){
-        // 트랜잭션 메세지는 일단 임의로!! => txid로 하면 됨
-        // transaction msg를 출력값의 pubkey로만 했음. SIGHASH는 0x03인듯?
-        // msg는 all이니깐 그냥 txid를 넣어버리는걸로 
-        // return msg
-        const msg: number[] = [];
-        msg.push(1, 2, 3, 4, 5)
+        // const msg: number[] = [];
+        // msg.push(1, 2, 3, 4, 5)
         // this.msgHash = msg
-        this.msgHash = '8190374a5a1feb54fab4417fac1a3d9185de06fd8dcac34822c7cd00083638b1'
-        return '8190374a5a1feb54fab4417fac1a3d9185de06fd8dcac34822c7cd00083638b1'   // test
+        // this.msgHash = '8190374a5a1feb54fab4417fac1a3d9185de06fd8dcac34822c7cd00083638b1'
+        // return '8190374a5a1feb54fab4417fac1a3d9185de06fd8dcac34822c7cd00083638b1'   // test
     }
 
     // 서명크기 + SIGHASH를 포함하는 사용자의 개인 키에서 사용자의 지갑이 생성하는 서명(서명직렬화, toDER) + 공개 키 길이(바이트) + 해시되지 않은 공개키
     generateScriptSig(){
         const signLen = (this.generateSignature().length / 2).toString(16);
-        // console.log(`signLen: ${signLen}`)
-        // console.log(`signature: ${this.generateSignature()}`)
         const pubKey = this.keyPair.getPublic(true, 'hex');
-        const pubKeyLen = (pubKey.length / 2).toString(16)
+        const pubKeyLen = (pubKey.length / 2).toString(16);
         return signLen + this.generateSignature() + pubKeyLen + pubKey;
     }
 
@@ -54,9 +48,9 @@ export class TxInput implements ITxInput {
     // DER 시퀀스의 시작 + 시퀀스의 길이 + 정수 값이 뒤따릅니다. + 정수의 길이 + R + 다음에 또 다른 정수가 옵니다. +  정수의 길이 + S + SIGHASH
     generateSignature(type?:string):string{
         if(type){
-            return this.keyPair.sign(this.generateMsgHash()).toDER()
+            return this.keyPair.sign(this.msgHash).toDER()
         }
-        return this.keyPair.sign(this.generateMsgHash()).toDER('hex')
+        return this.keyPair.sign(this.msgHash).toDER('hex')
     }
 
     // transaction hash(출력의 참조 txid) + '00000000' + 스크립트의 길이 + scriptSig(this.generateScriptSig) + 시퀀스(FFFFFFFF)
@@ -91,11 +85,12 @@ export class TxOutput implements ITxOutput {
         return value * (10 ** 8);
     }
 
+    // scriptPubKey(Locking script 생성하는 로직)
     createOutput() { 
         const decodedRecipientAddress = bs58_decode(this.recipientAddress);
-        // 14 정체??
+        // 14 정체?? => 수정 필요
         const scriptPubKey = OP_CODES['OP_DUP'] + OP_CODES['OP_HASH160'] + '14' + decodedRecipientAddress + OP_CODES["OP_EQUALVERIFY"] + OP_CODES['OP_CHECKSIG'];
-        console.log(`scriptPubKey: ${scriptPubKey}`);
+        // console.log(`scriptPubKey: ${scriptPubKey}`);
         return scriptPubKey;
     }
 
@@ -156,21 +151,24 @@ export class Transaction implements ITransaction {
             locktime: this.locktime,
             vin: this.vin,
             vout: this.vout,
-            txID: this.txID
+            txID: this.txID,
+            status: this.status
         }
     }
 }
 
 // input이 없고 output만 존재함. output은 하나
-export class CoinbaseTransaction {
+export class CoinbaseTransaction implements ITransaction {
     version = 1;
     locktime = 0;
-    vin = null
-    vout:ITxOutput[]
     txID:string;
+    vin = [];
+    vout:ITxOutput[];
+    status: 'spent'|'unspent'
 
-    constructor(txOutput:ITxOutput){
+    constructor(txOutput: ITxOutput){
         this.vout = [txOutput];
+        this.status = 'unspent'
         this.txID = this.generateTxID();
     }
 
@@ -178,9 +176,9 @@ export class CoinbaseTransaction {
         const outLen = reverse_order(String(this.vout.length));
         let OUT = '';
         this.vout.forEach(v => {
-            const satoshi = (v.value * (10 ** 8)).toString(16);   // 0.009 같은 수는 문제...
-            const val = (little_endian(satoshi) as string).length < 16 ? little_endian(satoshi) + '00000000' : little_endian(satoshi);
-            const len = (v.scriptPubKey.length / 2).toString(16);    // bytes 길이 (hex). 스크립트 길이
+            const satoshi = (v.value).toString(16);
+            const val = (little_endian(satoshi) as string).length
+            const len = (v.scriptPubKey.length / 2).toString(16);
             // 송금금액 + 스크립트 길이 + scriptPubKey
             OUT += (val + len + v.scriptPubKey);
         })
@@ -190,5 +188,16 @@ export class CoinbaseTransaction {
     generateTxID() {
         const _txid = this.generateTransaction();
         return getHash.hexHash(getHash.binHash(_txid))
+    }
+
+    get __str__() {
+        return {
+            version: this.version,
+            locktime: this.locktime,
+            vin: this.vin,
+            vout: this.vout,
+            txID: this.txID,
+            status: this.status
+        }
     }
 }
