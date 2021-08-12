@@ -8,7 +8,6 @@ const ec = new EC('secp256k1');
 // }
 
 export class Stack {
-    // 타입 수정 필요
     arr:string[]
     txInput
 
@@ -51,12 +50,10 @@ export class Stack {
                     console.log('검증 실패')
                     isValid = false;
                 }
-                console.log('op_equalverify')
                 break;
             case OP_CODES['OP_CHECKSIG']:
                 console.log('checksig');
                 // 메세지 + 서명 + 공개키
-                // 라이브러리 사용하면 아래처럼 간단하게 가능
                 const bool = this.txInput.keyPair.verify(this.txInput.msgHash, this.txInput.generateSignature())
                 console.log(`bool: `, bool)
                 this.pop();

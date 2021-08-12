@@ -6,10 +6,8 @@ import { OP_CODES } from './script'
 import { bs58_decode, little_endian, getHash, reverse_order } from '../helper';
 import type { ITxInput, ITransaction, ITxOutput } from '../../interface';
 import { Blockchain } from '../blockchain';
-import { Stack } from './stack';
 
 // http://royalforkblog.github.io/2014/11/20/txn-demo/
-
 export class TxInput implements ITxInput {
     txid    // 참조한 출력의 txid
     scriptSig
@@ -143,9 +141,9 @@ export class Transaction implements ITransaction {
             IN += (little_endian(v.txid as string) as string) + little_endian(v.vout as string) + Number(v.scriptSig.length / 2).toString(16) + v.scriptSig + 'FFFFFFFF'
         })
         this.vout.forEach(v => {
-            const satoshi = (v.value * (10 ** 8)).toString(16);   // 0.009 같은 수는 문제... 정수로 저장하면 됨.
+            const satoshi = (v.value * (10 ** 8)).toString(16);
             const val = (little_endian(satoshi) as string).length < 16 ? little_endian(satoshi) + '00000000' : little_endian(satoshi);
-            const len = (v.scriptPubKey.length / 2).toString(16);    // bytes 길이 (hex). 스크립트 길이
+            const len = (v.scriptPubKey.length / 2).toString(16);
             // 송금금액 + 스크립트 길이 + scriptPubKey
             OUT += (val + len + v.scriptPubKey);
         })
@@ -194,84 +192,3 @@ export class CoinbaseTransaction {
         return getHash.hexHash(getHash.binHash(_txid))
     }
 }
-
-// const wallet = generateKeyPair('temp');
-// const txInput = new TxInput(wallet);
-// const res = txInput.verifySignature(wallet)
-// console.log(txInput.__str__, res)
-
-type ParsedScriptPubKey = {
-    type: 'OP'|'VALUE';
-    code: string;
-}
-
-const executeScript = (txInput, txOutput) => {
-
-    const parseScriptPubKey = (_scriptPubKey:string):ParsedScriptPubKey[] => {
-        const op1 = _scriptPubKey.slice(0, 2);
-        const op2 = _scriptPubKey.slice(2, 4);
-        const address = _scriptPubKey.slice(6, -4);
-        const op3 = _scriptPubKey.slice(-4, -2);
-        const op4 = _scriptPubKey.slice(-2);
-
-        return [
-            {type: 'OP', code: op1}, 
-            {type: 'OP', code: op2}, 
-            {type: 'VALUE', code: address}, 
-            {type: 'OP', code: op3}, 
-            {type: 'OP', code: op4}, 
-        ]
-    }
-
-    const sig = txInput.__str__.scriptSig;
-    const scriptPubKey = txOutput.__str__.scriptPubKey;
-
-    const stack = new Stack(txInput);
-    const arr = parseScriptPubKey(scriptPubKey);
-    stack.push(sig, 'VALUE');
-    stack.push(txInput.keyPair.getPublic(true, 'hex'), 'VALUE');
-    for (const obj of arr){
-        const {code, type} = obj;
-        const res = stack.push(code, type)
-        if(!res){
-            console.log('당신이 쓸 수 있는 utxo가 아닙니다.')
-            return false;
-        }
-        // console.log(stack.__str__)
-    }
-    // console.log('파싱된 scriptPubKey 배열')
-    // console.log(arr)
-
-    if(stack.top === 'TRUE'){
-        console.log('당신이 쓸 수 있는 UTXO 입니다.');
-        return true;
-    } else {
-        return false;
-    }
-}
-
-
-// test
-
-// const blockchain = new Blockchain();
-// console.log(blockchain)
-
-// const txoutput = new TxOutput(recipientAddress, 0.015);
-// console.log(txoutput.__oneLine__)
-
-/**
- * 1. 일단 내가 돈을 보내야되니깐 내 지갑에 잔고가 있는지 확인
- * 2. utxo 찾기 (status가 unspent인것만)
- */
-const sender = generateKeyPair('brettonwoods_7_1_1944');
-const senderAddress = getAddress(sender.getPublic(true, 'hex'))
-const recipient = generateKeyPair('temp2');
-const recipientAddress = getAddress(recipient.getPublic(true, 'hex'));
-
-const txInput = new TxInput(sender)
-const sig = txInput.generateScriptSig()
-// console.log(sig)
-
-const txOutput = new TxOutput(senderAddress, 0.1);
-
-executeScript(txInput, txOutput)
