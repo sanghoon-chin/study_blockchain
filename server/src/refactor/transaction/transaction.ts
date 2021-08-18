@@ -59,11 +59,12 @@ export class TxInput {
         const _msg = getHash.binHash(msg);
         const sigDER = await eccrypto.sign(wallet.privKey, _msg);
         this.msg = _msg
-        // ScriptSig = <varint of total sig length> <SIG from code, including appended 01 SIGNHASH> <length of pubkey (0x21 or 0x41)> <pubkey>
-        // 필드 추가 필요
         this.signatureDER = sigDER.toString('hex');
-        // this.scriptSig = 여기 로직 추가하기
-        return sigDER.toString('hex');
+        const sigLen = (sigDER.toString('hex').length / 2).toString(16);
+        const pubKey = wallet.pubKey;
+        const pubKeyLen = (wallet.pubKey.length / 2).toString(16)
+        this.scriptSig = sigLen + sigDER.toString('hex') + pubKeyLen + pubKey;
+        return true
     }
 
     private parseScriptPubKey(scriptPubKey: string):ParsedScriptPubKey[] {
@@ -82,15 +83,16 @@ export class TxInput {
         ]
     }
 
-    async executeScript(wallet, scriptPubKey:string): Promise<boolean> {
+    // scriptSig만 전달해줘서 하는게 best
+    async executeScript(scriptPubKey:string): Promise<boolean> {
         const sig = this.signatureDER as string;
-        const pubKey = wallet.pubKey;
+        const pubKey = this.scriptSig?.slice(-66) as string;
         const stack = new Stack(sig, pubKey, this.msg as Buffer);
         const arr = this.parseScriptPubKey(scriptPubKey);
         stack.push(sig, 'VALUE');
         stack.push(pubKey, 'VALUE');
-        for await (const {code, type} of arr){
-            const res = await stack.push(code, type);
+        for (const {code, type} of arr){
+            await stack.push(code, type);
         }
         // console.log(stack.info)
         if(stack.top === 'TRUE'){
@@ -210,7 +212,8 @@ const test = async () => {
     console.log(tx.info)
     const txInput = new TxInput(tx, 0, txOutput)
     await txInput.generateScriptSig(myWallet, tx.info.txid)
-    const bool = await txInput.executeScript(myWallet, txOutput.info.scriptPubKey)
+    console.log(txInput.info)
+    const bool = await txInput.executeScript(txOutput.info.scriptPubKey)
     console.log(bool)
 }
 
