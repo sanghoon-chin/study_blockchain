@@ -127,30 +127,30 @@ export class Block {
 import { Wallet } from '../wallet/wallet';
 import {Blockchain} from '../blockchain/blockchain'
 
-;(async () => {
-    const blockchain = new Blockchain();
-    const tom = new Wallet('tom', 'brettonwoods_7_1_1944');
-    const alice = new Wallet('alice', 'temp')
-    const txOutput = new TxOutput(tom.info.encodedAddress, 20)
-    const tx = new Transaction('coinbase', [txOutput], null);
+// ;(async () => {
+//     const blockchain = new Blockchain();
+//     const tom = new Wallet('tom', 'brettonwoods_7_1_1944');
+//     const alice = new Wallet('alice', 'temp')
+//     const txOutput = new TxOutput(tom.info.encodedAddress, 20)
+//     const tx = new Transaction('coinbase', [txOutput], null);
 
-    const firstBlock = new Block(tom, [tx])
-    firstBlock.pow(firstBlock.bits)
-    console.log('first block')
-    console.log(firstBlock)
-    blockchain.appendBlock(firstBlock)
-    const txInput2 = new TxInput(tx, 0, txOutput)
-    await txInput2.generateScriptSig(tom, tx.info.txid)
-    await txInput2.executeScript(txOutput.info.scriptPubKey);
-    const tom2alice = new TxOutput(alice.info.encodedAddress, 20);
+//     const firstBlock = new Block(tom, [tx])
+//     firstBlock.pow(firstBlock.bits)
+//     console.log('first block')
+//     console.log(firstBlock)
+//     blockchain.appendBlock(firstBlock)
+//     const txInput2 = new TxInput(tx, 0, txOutput)
+//     await txInput2.generateScriptSig(tom, tx.info.txid)
+//     await txInput2.executeScript(txOutput.info.scriptPubKey);
+//     const tom2alice = new TxOutput(alice.info.encodedAddress, 20);
 
-    const transaction = new Transaction('tx', [tom2alice], [txInput2])
-    console.log(transaction.info)
+//     const transaction = new Transaction('tx', [tom2alice], [txInput2])
+//     console.log(transaction.info)
 
-    console.log('second block')
-    const secondBlock = new Block(alice, [transaction], firstBlock)
-    secondBlock.pow(secondBlock.bits)
-    console.log(secondBlock)
-    blockchain.appendBlock(secondBlock)
-    console.log(blockchain.info[1].transactions)
-})();
+//     console.log('second block')
+//     const secondBlock = new Block(alice, [transaction], firstBlock)
+//     secondBlock.pow(secondBlock.bits)
+//     console.log(secondBlock)
+//     blockchain.appendBlock(secondBlock)
+//     console.log(blockchain.info[1].transactions)
+// })();
