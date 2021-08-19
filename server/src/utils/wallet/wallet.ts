@@ -5,14 +5,7 @@ import * as ecdsa from 'elliptic';
 const ec = new ecdsa.ec('secp256k1');
 
 import { bs58_encode, getHash } from '../helper'
-
-interface IWallet {
-    name: string;
-    privKey: Buffer;
-    pubKey: string;
-    decodedAddress: string;
-    encodedAddress: string;
-}
+import type {IWallet} from '../../interface'
 
 type Kind = 'HEX' | 'WIF' | 'WIF-C';
 
@@ -100,6 +93,3 @@ export class Wallet implements IWallet {
         }
     }
 }
-
-// const myWallet = new Wallet('tom', 'temp')
-// console.log(myWallet)

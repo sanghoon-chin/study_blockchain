@@ -1,26 +1,27 @@
-import {OP_CODES} from './script';
-import {getHash} from '../helper'
-import { ec as EC } from 'elliptic';
-const ec = new EC('secp256k1');
+import eccrypto from 'eccrypto';
 
-// type StackArr<T> = {
-//     [P in keyof T]: 
-// }
+import {OP_CODES} from './script';
+import {getHash} from '../helper';
 
 export class Stack {
-    arr:string[]
-    txInput
+    arr:string[];
+    sig:string;
+    pubKey:string;
+    msg:Buffer
 
-    constructor(txInput){
+    constructor(sig:string, pubKey:string, msg:Buffer){
         this.arr = []
-        this.txInput = txInput
+        this.sig = sig;
+        this.pubKey = pubKey;
+        this.msg = msg
     }
 
-    push(value:string, type:'OP'|'VALUE'){
+    async push(value:string, type:'OP'|'VALUE'){
         if(type === 'VALUE'){
             return this.arr.push(value);
         } else{
-            return this.executeOP(value)
+            const res = await this.executeOP(value)
+            return res
         }
     }
 
@@ -28,7 +29,7 @@ export class Stack {
         return this.arr.pop();
     }
 
-    executeOP(operator:string){
+    async executeOP(operator:string){
         let isValid = true;
         switch(operator){
             case OP_CODES['OP_DUP']:
@@ -53,19 +54,18 @@ export class Stack {
                 break;
             case OP_CODES['OP_CHECKSIG']:
                 console.log('checksig');
-                // 메세지 + 서명 + 공개키
-                const bool = this.txInput.keyPair.verify(this.txInput.msgHash, this.txInput.generateSignature())
-                console.log(`bool: `, bool)
-                this.pop();
-                this.pop();
-                if(bool){
-                    console.log('검증 성공');
-                    this.push('TRUE', 'VALUE');
-                } else{
-                    console.log('검증 실패');
-                    this.push('FALSE', 'VALUE')
-                    isValid = false;
-                }
+                eccrypto.verify(Buffer.from(this.pubKey, 'hex'), this.msg, Buffer.from(this.sig, 'hex'))
+                    .then(() => {
+                        console.log('검증 성공');
+                        this.pop()
+                        this.pop()
+                        this.push('TRUE', 'VALUE');
+                    })
+                    .catch(() => {
+                        console.log('검증 실패');
+                        this.push('FALSE', 'VALUE')
+                        isValid = false;
+                    })
                 break;
         }
         return isValid;
@@ -75,7 +75,7 @@ export class Stack {
         return this.arr[this.arr.length - 1]
     }
     
-    get __str__(){
+    get info(){
         return this.arr
     }
 }
