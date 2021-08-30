@@ -15,7 +15,7 @@ export class Block {
     nonce
     transactions: any[] = []
 
-    confirmed?: number;  // 몇 명이나 합의했는지
+    confirmed?: number = 0;  // 몇 명이나 합의했는지
 
     constructor(miner:IWallet, txs: ITx[], prevBlock?: IBlock) {
         this.bits = this.generateBits();
@@ -28,10 +28,9 @@ export class Block {
         this.mrkl_root = this.generateMrklRoot()
     }
 
-    // 다른 사람들이 이 블록이 유효한지 검증할 수 있게 돌려볼 수 있는 코드
-    // verifyBlock() {
-
-    // }
+    updateConfirm(){
+        this.confirmed = (this.confirmed || 0) + 1
+    }
 
     private generateCoinbaseTx(miner) {
         const initValue = 50;   //50btc

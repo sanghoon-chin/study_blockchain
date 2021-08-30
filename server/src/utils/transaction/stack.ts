@@ -18,7 +18,8 @@ export class Stack {
 
     async push(value:string, type:'OP'|'VALUE'){
         if(type === 'VALUE'){
-            return this.arr.push(value);
+            await this.arr.push(value)
+            return true;
         } else{
             const res = await this.executeOP(value)
             return res
@@ -34,13 +35,13 @@ export class Stack {
         switch(operator){
             case OP_CODES['OP_DUP']:
                 console.log('duplicate!')
-                this.push(this.top, 'VALUE');
+                await this.push(this.top, 'VALUE');
                 break;
             case OP_CODES['OP_HASH160']:
                 console.log('hash160!')
                 const item = this.pop() as string;
                 const hashItem = getHash.ripemd160Hash(getHash.hash2(item));
-                this.push(hashItem, 'VALUE');
+                await this.push(hashItem, 'VALUE');
                 break;
             case OP_CODES['OP_EQUALVERIFY']:
                 console.log('Equal verify!');
@@ -55,11 +56,11 @@ export class Stack {
             case OP_CODES['OP_CHECKSIG']:
                 console.log('checksig');
                 eccrypto.verify(Buffer.from(this.pubKey, 'hex'), this.msg, Buffer.from(this.sig, 'hex'))
-                    .then(() => {
+                    .then(async () => {
                         console.log('검증 성공');
                         this.pop()
                         this.pop()
-                        this.push('TRUE', 'VALUE');
+                        await this.push('TRUE', 'VALUE');
                     })
                     .catch(() => {
                         console.log('검증 실패');

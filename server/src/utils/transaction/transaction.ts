@@ -26,7 +26,7 @@ export class TxInput implements ITxInput {
     signatureDER?: string;
     msg?: Buffer;
 
-    constructor(tx: ITx, vout: number, prevTxOutput: ITxOutput) {
+    constructor(tx: ITx, vout: number, prevTxOutput?: ITxOutput) {
         this.txid = tx.txid;
         this.vout = vout;
     }
@@ -66,17 +66,20 @@ export class TxInput implements ITxInput {
         const pubKey = this.scriptSig?.slice(-66) as string;
         const stack = new Stack(sig, pubKey, this.msg as Buffer);
         const arr = this.parseScriptPubKey(scriptPubKey);
-        stack.push(sig, 'VALUE');
-        stack.push(pubKey, 'VALUE');
+        await stack.push(sig, 'VALUE');
+        await stack.push(pubKey, 'VALUE');
         for (const {code, type} of arr){
-            await stack.push(code, type);
+            const res = await stack.push(code, type);
+            if(res == false){
+                return false
+            }
         }
-        // console.log(stack.info)
-        if(stack.top === 'TRUE'){
+        console.log(stack.info)
+        if(stack.top === 'TRUE' && stack.arr.length === 1){
             console.log('당신이 쓸 수 있는 UTXO 입니다.');
             return true;
         } else {
-            console.log('당신이 쓸 수 있는 UTXO 아닙니다.')
+            console.log('당신이 쓸 수 없는 UTXO 입니다.')
             return false;
         }
     }
@@ -187,6 +190,7 @@ const test = async () => {
     const txOutput = new TxOutput(myWallet.info.encodedAddress, 20)
     const tx = new Transaction('coinbase', [txOutput], null)
     console.log(tx.info)
+    // tx: ITx, vout: number, prevTxOutput?: ITxOutput
     const txInput = new TxInput(tx, 0, txOutput)
     await txInput.generateScriptSig(myWallet, tx.info.txid)
     console.log(txInput.info)
