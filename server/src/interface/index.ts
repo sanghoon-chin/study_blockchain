@@ -47,6 +47,10 @@ export interface ITx {
     type: TypeTx
 }
 
+export interface IBlockchain{
+    chain: IBlock[]    
+}
+
 export type ParsedScriptPubKey = {
     type: 'OP' | 'VALUE';
     code: string;

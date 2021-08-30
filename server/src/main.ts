@@ -1,87 +1,204 @@
 import repl from 'repl';
-import net from 'net';
 import fs from 'fs/promises';
 import path from 'path';
 
-import {Block, Blockchain, Transaction, TxInput, TxOutput, Wallet} from './utils'
-import { IWallet } from './interface';
+import socket from './socket';
+import { Block, Blockchain, Transaction, TxInput, TxOutput, Wallet } from './utils'
+import type { IBlock, IBlockchain, IWallet } from './interface'
 
-const replServer = repl.start({prompt: '> '});
+const replServer = repl.start({ prompt: '> ' });
 
-const filePath = path.resolve(__dirname, 'data', 'walletList.json');
+const WALLET_LIST_PATH = path.resolve(__dirname, 'data/wallet_list.json');
+const PORT_LIST_PATH = path.resolve(__dirname, 'data/port_list.json');
 
-replServer.defineCommand('지갑생성', {
-    help: 'create wallet',
-    async action(name){
-        if(!name){
+type WalletList = {
+    owner: string;
+    address: string;
+}
+
+let myWallet;
+
+let blockchain = new Blockchain();
+
+replServer.displayPrompt();
+
+replServer.defineCommand('createWallet', {
+    help: '지갑을 생성합니다. (이름 입력 필수)',
+    async action(name) {
+        if (!name) {
             console.error('이름을 입력해주세요');
             this.displayPrompt();
             return false;
         }
-        const wallet = new Wallet(name, 'temp')
+        const secretKey = Math.random();
+        myWallet = new Wallet(name, String(secretKey));
         console.log('지갑 생성 완료!')
-        console.log(wallet.info)
-        const walletList = JSON.parse(await fs.readFile(filePath, {encoding: 'utf-8'}));
+        console.log(myWallet.info)
+        const walletList = JSON.parse(await fs.readFile(WALLET_LIST_PATH, { encoding: 'utf-8' })) as WalletList[];
         walletList.push({
             owner: name,
-            address: wallet.info.encodedAddress
+            address: myWallet.info.encodedAddress
         });
-        await fs.writeFile(filePath, JSON.stringify(walletList))
+        await fs.writeFile(WALLET_LIST_PATH, JSON.stringify(walletList));
         this.displayPrompt();
     }
 })
 
-replServer.defineCommand('지갑조회', {
-    help: 'show wallet list',
-    async action(){
-        const walletList = JSON.parse(await fs.readFile(filePath, {encoding: 'utf-8'}));
-        console.log(walletList)
+replServer.defineCommand('getWalletList', {
+    help: '내 주소를 제외한 다른 사람들의 주소 리스트를 확인하는 명령어입니다.',
+    async action() {
+        const walletList = JSON.parse(await fs.readFile(WALLET_LIST_PATH, { encoding: 'utf-8' })) as WalletList[];
+        // 내 지갑 주소 제외하고 다른 사람들 지갑 주소만 보여줌
+        const filteredWallet = walletList.filter(v => v.address != myWallet.encodedAddress);
+        console.log(filteredWallet?.map(v => ({ address: v.address, owner: v.owner })));
         this.displayPrompt();
     }
 })
 
-let recipient = '';
-
-replServer.defineCommand('송금할사람주소', {
-    help: '송금할 사람 주소 입력',
-    action(name){
-        if(name){
-            recipient = name;
-            this.displayPrompt();
-        }
-    }
-})
-
-const getBalance = (recipientAddress:string) => {
-    
-}
-
-const blockchain = new Blockchain();
-
-replServer.defineCommand('초기화', {
-    help: '개발자에게 50BTC를 송금하는 블록을 만든다',
-    action(){
+replServer.defineCommand('initFirstBlock', {
+    help: '제네시스 블록 생성',
+    action() {
         const developerWallet = new Wallet('developer', 'admin')
-        const txOutput = new TxOutput(recipient, 50);
+        const txOutput = new TxOutput(myWallet.encodedAddress, 50);
         const coinbaseTx = new Transaction('coinbase', [txOutput], null);
         const firstBlock = new Block(developerWallet, [coinbaseTx])
         firstBlock.pow(firstBlock.bits);
+        console.log(blockchain.chain[0].transactions)
         blockchain.appendBlock(firstBlock);
+        console.log('제네시스 블록 생성!');
+        this.displayPrompt();
     }
 })
 
-replServer.defineCommand('송금하기', {
+replServer.defineCommand('showMyBlockchain', {
+    help: '내 블록체인을 보여줍니다.',
+    action(name) {
+        console.log(blockchain.chain);
+        this.displayPrompt();
+    }
+})
+
+replServer.defineCommand('', {
+    help: 'memory pool 을 보여줍니다.',
+    action(name) {
+        console.log();
+        this.displayPrompt();
+    }
+})
+
+replServer.defineCommand('updateBlockchain', {
+    help: '내 블록체인을 업데이트하기 위해 주변 노드에게 요청한다.',
+    async action() {
+        const ports = JSON.parse(await fs.readFile(PORT_LIST_PATH, 'utf-8')) as number[];
+        const pickRandPort = ports.filter(v => v !== socket.address().port)
+        const nearNodePort = pickRandPort[Math.floor(Math.random() * pickRandPort.length)]
+
+        const data = {
+            type: 'requestBlockchain',
+            data: blockchain.chain
+        }
+
+        socket.send(JSON.stringify(data), nearNodePort, 'localhost', (err) => {
+            if (err) console.error(err)
+            console.log('요청 성공');
+            this.displayPrompt();
+        })
+    }
+})
+
+replServer.defineCommand('broadcastBlockchain', {
+    help: '근처 노드에게 블록체인을 브로드캐스트한다.',
+    async action() {
+        const ports = JSON.parse(await fs.readFile(PORT_LIST_PATH, 'utf-8')) as number[];
+        const pickRandPort = ports.filter(v => v !== socket.address().port)
+        const nearNodePort = pickRandPort[Math.floor(Math.random() * pickRandPort.length)]
+
+        const data = {
+            type: 'blockchain',
+            data: blockchain
+        }
+
+        socket.send(JSON.stringify(data), nearNodePort, 'localhost', (err) => {
+            if (err) console.error(err)
+            console.log('전송 성공')
+            this.displayPrompt();
+        })
+    }
+})
+
+replServer.defineCommand('getBlock', {
+    help: '블록을 업데이트합니다.',
+    async action() {
+
+    }
+})
+
+replServer.defineCommand('sendBTC', {
     help: '송금하기',
-    async action(value){
-        if(recipient){
+    async action(data) {   // recipinetAddress_value
+        const [recipient, value] = data.split('_');
+        const isValidAddress = async (address:string) => {
+            const list = JSON.parse(await fs.readFile(WALLET_LIST_PATH, 'utf-8'));
+            return list.find(v => v.encodedAddress === address)
+        }
+
+        const recipientInfo = await isValidAddress(recipient); 
+        if(recipientInfo){
+            console.log(`${(recipientInfo as IWallet).name}님에게 ${value}BTC 만큼 전송합니다.`);
             const txOutput = new TxOutput(recipient, Number(value));
             console.log(txOutput.info)
             // 블록체인에 있는 모든 unspent이면서 송신자가 쓸 수 있는 트랜잭션을 찾는다 (반복문 돌면서) 
-            console.log(blockchain.info)
-            recipient = ''
+            blockchain.chain.forEach(({transactions}) => {
+                transactions.forEach(tx => {
+                    console.log(tx)
+                })
+            })
+            this.displayPrompt()
         } else{
-            console.error('수신자의 주소를 입력해주세요');
-            this.displayPrompt();
+            console.log('존재하지 않는 주소입니다. 주소를 올바르게 입력해주세요')
+            this.displayPrompt()
+            return false;
         }
     }
+})
+
+type SocketMsgType = 'transaction' | 'blockchain' | 'block' | 'requestBlockchain';
+// SocketMsgType 에 따라서 data property의 타입이 정해지려면 어떻게 해야되나!?
+type DataFormat = {
+    type: SocketMsgType;
+    data: any | Blockchain;
+}
+
+socket.on('message', (msg, { port }) => {
+    const { type, data: d } = JSON.parse(msg.toString('utf-8')) as DataFormat;
+    console.log(d)
+
+    switch (type) {
+        case "blockchain":
+            if (port === socket.address().port) {
+                blockchain = d.data
+                console.log('내 블록체인 업데이트 성공!');
+            }
+            break;
+        case "transaction":
+            break;
+        case 'block':
+            break;
+        case 'requestBlockchain':
+            if (port !== socket.address().port) {
+                const data: DataFormat = {
+                    type: 'blockchain',
+                    data: blockchain.chain
+                }
+                socket.send(JSON.stringify(data), port, 'localhost', (err) => {
+                    if (err) console.error(err)
+                    console.log('다른 노드로부터 내 블록체인을 전송함');
+                    console.log('전송 성공');
+                })
+            }
+            break;
+        default:
+            break;
+    }
+    replServer.displayPrompt();
 })
