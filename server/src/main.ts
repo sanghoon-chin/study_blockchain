@@ -8,7 +8,7 @@ import ip from 'ip';
 import {get_merkle_root_hash} from './utils/block/get_mrkl_root'
 import socket from './socket';
 import { Block, Blockchain, Transaction, TxInput, TxOutput, Wallet } from './utils'
-import type { IBlock, IBlockchain, ITx, ITxInput, ITxOutput, IWallet } from './interface'
+import type { IBlock, ITx, ITxInput, ITxOutput, IWallet } from './interface'
 
 const replServer = repl.start({ prompt: '> ' });
 
@@ -24,7 +24,7 @@ let myWallet;
 
 let mempool: ITx[] = [];
 
-let blockchain = new Blockchain();
+let blockchain:any[] = []
 
 let waitBlock   // 전송받은 블럭. 검증필요함
 
@@ -86,9 +86,9 @@ replServer.defineCommand('initFirstBlock', {
         const coinbaseTx = new Transaction('coinbase', [txOutput], null);
         const firstBlock = new Block(myWallet, [coinbaseTx])
         firstBlock.pow(firstBlock.bits);
-        blockchain.appendBlock(firstBlock);
+        blockchain.push(firstBlock);
         console.log('=======================================');
-        console.log(blockchain.chain)
+        console.log(blockchain)
         console.log('=======================================');
         console.log('제네시스 블록 생성!');
         this.displayPrompt();
@@ -101,7 +101,7 @@ replServer.defineCommand('showMyBlockchain', {
     action() {
         console.log('blockchain');
         console.log('=======================================')
-        console.log(blockchain.chain);
+        console.log(blockchain);
         console.log('=======================================')
         this.displayPrompt();
     }
@@ -122,7 +122,7 @@ replServer.defineCommand('showMempool', {
 replServer.defineCommand('mining', {
     help: 'mempool 에 있는 모든 transaction들 채굴하기',
     async action() {
-        const block = new Block(myWallet, mempool, blockchain.lastestBlock);
+        const block = new Block(myWallet, mempool, blockchain[blockchain.length - 1]);
         console.log(block);
         block.pow(block.bits)
         // 채굴에 성공했다면 아래 코드를 실행
@@ -153,7 +153,7 @@ replServer.defineCommand('updateBlockchain', {
 
         const data = {
             type: 'requestBlockchain',
-            data: blockchain.chain
+            data: blockchain
         }
 
         socket.send(JSON.stringify(data), nearNodePort, 'localhost', (err) => {
@@ -175,7 +175,7 @@ replServer.defineCommand('broadcastBlockchain', {
 
         const data = {
             type: 'blockchain',
-            data: blockchain.chain
+            data: blockchain
         }
 
         const ports = await getAllPorts();
@@ -203,9 +203,9 @@ replServer.defineCommand('sendBTC', {
         if (recipientInfo) {
             console.log(`${recipientInfo.owner}님에게 ${value}BTC 만큼 전송합니다.`);
             let sum = 0;    // sender의 잔고를 저장. satoshi 단위
-            let txinputs: ITxInput[] = []   // transaction 생성을 위한 txinputs
+            let txinputs: ITxInput[] = [];   // transaction 생성을 위한 txinputs
             // 블록체인에 있는 모든 unspent이면서 송신자가 쓸 수 있는 트랜잭션을 찾는다 (반복문 돌면서) 
-            blockchain.chain.forEach((block) => {
+            blockchain.forEach((block) => {
                 block.transactions.forEach(async tx => {
                     // 여기서 스크립트 연산 (잔액 조회)
                     for (let i = 0; i < tx.vout.length; i++) {
@@ -270,56 +270,12 @@ replServer.defineCommand('sendBTC', {
     }
 })
 
-// replServer.defineCommand('temp', {
-//     help: 'temp',
-//     async action(){
-//         const msg = {
-//             type: 'temp',
-//             data: 'hi'
-//         }
-//         const ports = await getAllPorts();
-//         for(let i = 0;i<ports.length;i++){
-//             socket.send(JSON.stringify(msg), ports[i], 'localhost', (err) => {
-//                 if(err) console.error(err)
-//             })
-//         }
-//     }
-// })
-
 type SocketMsgType = 'transaction' | 'blockchain' | 'block' | 'requestBlockchain' | 'createNewTx';
 
 type DataFormat = {
     type: SocketMsgType;
     data: any | Blockchain;
 }
-
-// To do: 타입 잡기
-// ====================================================================================================
-// enum EnumMsgType {
-//     Transaction = 'transaction', 
-//     Blockchain = 'blockchain', 
-//     Block = 'block', 
-//     RequestBlockchain = 'requestBlockchain', 
-//     CreateNewTx = 'createNewTx'
-// }
-// type DataFormatByMsgType<T> = T extends EnumMsgType.Transaction ? {} :
-//                                                     T extends EnumMsgType.Blockchain ? Blockchain :
-//                                                     T extends EnumMsgType.Block ? {} :
-//                                                     T extends EnumMsgType.RequestBlockchain ? {} :
-//                                                     T extends EnumMsgType.CreateNewTx ? {} : never;
-
-// type DataFormat<T = any> = {
-//     type: T;
-//     data: DataFormatByMsgType<T>
-// }
-
-// let foo: DataFormat<EnumMsgType.Blockchain> 
-
-// Typescript advanced type "type guard"
-// function isBlockchainType(data: DataFormat): data is DataFormat<EnumMsgType.Blockchain> {
-//     return data.type === EnumMsgType.Blockchain
-// }
-// ====================================================================================================
 
 socket.on('message', async (msg, { port }) => {
     // const data = JSON.parse(msg.toString('utf-8')) as DataFormat;
@@ -353,34 +309,24 @@ socket.on('message', async (msg, { port }) => {
                 const valid = verifyBlock(blockchain, d, mempool)
                 waitBlock = d
                 if(valid) waitBlock.confirmed++
-                if(waitBlock.confirmed > Math.floor(ports.length / 2)){
+                if(waitBlock.confirmed >= Math.floor(ports.length / 2)){
                     console.log('유효한 블럭!');
-                    blockchain.appendBlock(waitBlock);
+                    blockchain.push(waitBlock)
+                    console.log('update 된 블럭')
+                    console.log(blockchain)
                     waitBlock = null
                     console.log('blockchain 보내기')
                     const _data:DataFormat = {
                         type: 'blockchain',
                         data: blockchain
                     }
-                    for(let i = 0;i<ports.length;i++){
-                        socket.send(JSON.stringify(_data), ports[i], 'localhost', (err) => {
-                            if(err) console.error(err)
-                            console.log('전송 성공')
-                        })
-                    }
-                } else{
-                    const data:DataFormat = {
-                        type: 'block',
-                        data: d
-                    }
-                    // for(let i = 0;i<ports.length;i++){
-                    //     socket.send(JSON.stringify(data), ports[i], )
-                    // }
-                    const nearNodePort = await getNearNode();
-                    socket.send(JSON.stringify(data), nearNodePort, 'localhost', (err) => {
+                    const nearNodePort = await getNearNode()
+                    socket.send(JSON.stringify(_data), nearNodePort, 'localhost', (err) => {
                         if(err) console.error(err)
-                        console.log('다시 전송 성공');
+                        console.log('전송 성공')
                     })
+                } else{
+                    console.log('검증 실패')
                 }
             }
             break;
@@ -413,22 +359,10 @@ socket.on('message', async (msg, { port }) => {
     replServer.displayPrompt();
 })
 
-
-// To-do
-// socket.addMembership => 여러 노드한테 브로드캐스트
-// pow 구현 후 마무리
-
-
-// 다른 사람들이 이 블록이 유효한지 검증할 수 있게 돌려볼 수 있는 코드
 function verifyBlock(blockchain, block, mempool) {
     let isValid = true;
-    console.log(block)
-    if(blockchain.chain[blockchain.chain.length - 1].hash !== block.prev_block){
+    if(blockchain[blockchain.length - 1].hash !== block.prev_block){
         isValid = false;
-    }
-    const mrkl_root = get_merkle_root_hash(mempool.map(v => v.txid as string))
-    if(mrkl_root !== block.mrkl_root){
-        isValid = false
     }
     return isValid
 }
