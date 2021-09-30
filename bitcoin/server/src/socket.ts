@@ -9,7 +9,7 @@ const FILE_PATH = path.resolve(__dirname, 'data/port_list.json');
 socket.bind(PORT);
 
 const init = async (address:string) => {
-    const ports = JSON.parse(await fs.readFile(FILE_PATH, 'utf-8')) as number[]
+    const ports = JSON.parse(await fs.readFile(FILE_PATH, 'utf-8')) as number[] // []
     ports.push(PORT);
     await fs.writeFile(FILE_PATH, JSON.stringify(ports));
 }
